@@ -1,0 +1,125 @@
+public class ChatCatzServer extends Server{
+    private List <Benutzer> benutzer = new List();
+    public ChatCatzServer(int pPort){
+        super(pPort);
+        benutzer = new List <Benutzer> ();
+        benutzer.append(newBenutzer(...));
+    }
+    
+    private void bearbeiteADDFRIEND (Benutzer pBenutzer, String pMessage) {
+        String freund = pMessage.substring(pMessage.indexOf(" ") + 1, pMessage.length());
+        List<Benutzer> freunde = freund.gibFreunde();
+        Benutzer aktFreund = null;
+ 
+        for (freunde.toFirst(); freunde.hasAccess() && freunde == null; freunde.next()) {
+            if (freunde.getContent().gibName() == pBenutzer) {
+                aktFreund = freunde.getContent().gibName();
+            }
+        }
+ 
+        if (aktFeund == null) {
+            String msg = "-ERR unbekannt";
+            send(pBenutzer.gibIP(), pBenutzer.gibPort(), msg);
+        } else {
+            aktFreund.fuegeFreundHinzu(pBenutzer);
+            String msg = "+OK";
+            send(pBenutzer.gibAktIP(), pBenutzer.gibAktPort(), msg);
+        }
+        
+    }
+    
+    private void bearbeiteMEOW (Benutzer pBenutzer, String pMessage) {
+        
+    }
+    
+    private void bearbeitePURR(Benutzer pBenutzer, String pMessage) {
+        String miau = pMessage.substring(pMessage.indexOf(" ") + 1, pMessage.length());
+        int id = Integer.parseInt(miau);
+        List<Miau> miaus = pBenutzer.gibMiaus();
+        Miau aktMiau = null;
+ 
+        for (miaus.toFirst(); miaus.hasAccess() && aktMiau == null; miaus.next()) {
+            if (miaus.getContent().gibMiauID() == id) {
+                aktMiau = miaus.getContent();
+            }
+        }
+ 
+        if (aktMiau == null) {
+            String msg = "-ERR unbekannt";
+            send(pBenutzer.gibIP(), pBenutzer.gibPort(), msg);
+        } else {
+            aktMiau.fuegeSchnurrerHinzu(pBenutzer);
+            String msg = "+OK";
+            send(pBenutzer.gibAktIP(), pBenutzer.gibAktPort(), msg);
+        }
+    }
+ 
+    
+    private void bearbeitePURRSOF (Benutzer pBenutzer, String pMessage) {
+        
+    }
+    
+    private void bearbeiteUSERS (Benutzer pBenutzer) {
+        System.out.print("USERLIST ");
+        for (benutzer.toFirst(); benutzer.hasAccess();benutzer.next()){
+            
+            if (pBenutzer.istEingeloggt()){
+                System.out.print("*" + pBenutzer + "|");
+            }else{
+                System.out.print(pBenutzer + "|");
+            }
+        }
+    }
+    
+   
+    public void processNewConnection(String pClientIP, int pClientPort){};
+   
+    public void processMessage(String pClientIP, String pClientPort, String pMessage) {
+        String msg = "";
+        if(!isConnectedTo(pClientIP, pClientPort)) {
+            msg = "-ERR Nicht eingeloggt";
+            send(pClietIP, pClientPort, msg);
+        }
+        else if(pMessage == null || pMessage.equals("")) {
+            msg = "-ERR Keine Nachricht empfangen";
+            send(pClietIP, pClientPort, msg);
+        }
+        else {
+            Benutzer aktBenutzer = null;
+            for(benutzer.toFirst(); benutzer.hasAccess() && aktBenutzer == null; benutzer.next()) {
+                if(benutzer.getContent().gibAktIP().equals(pClientIP) && benutzer.getContent().gibAktPort() == Integer.parseInt(pClientPort)) {
+                    aktBenutzer = benutzer.getContent();
+                    break;
+                }
+            }
+            String command = pMessage.substring(0, pMessage.indexOf(" "));
+            if(aktBenutzer.istEingeloggt()) {
+                switch (command) {
+                    case "ADDFRIEND":
+                        bearbeiteADDFRIEND(aktBenutzer, pMessage);
+                        break;
+                    case "MEOW":
+                        bearbeiteMEOW(aktBenutzer, pMessage);
+                        break;
+                    case "PURR":
+                        bearbeitePURR(aktBenutzer, pMessage);
+                        break;
+                    case "PURRSOF":
+                        bearbeitePURRSOF(aktBenutzer, pMessage);
+                        break;
+                    case "USERS":
+                        bearbeiteUSERS(aktBenutzer);
+                        break;
+                    default:
+                        msg = "-ERR Unbekannter Befehl";
+                        send(pClietIP, pClientPort, msg);
+                }
+            }
+        }
+    }
+    
+    public void processClosingConnection(String pClientIP, int pClientPort) {};
+    
+    
+    
+}

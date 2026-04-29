@@ -1,0 +1,220 @@
+import java.util.Scanner;
+
+/**
+ * ChatCatz – Kommandozeilen-Client
+ * Startet mit: java Main <serverIP> <serverPort>
+ */
+public class Main {
+
+    private static ChatCatzClient client;
+    private static final Scanner  scanner = new Scanner(System.in);
+
+    // =========================================================
+    // main
+    // =========================================================
+
+    public static void main(String[] args) {
+        System.out.println("===========================================");
+        System.out.println("   🐱  ChatCatz CMD-Client  🐱");
+        System.out.println("===========================================");
+
+        String serverIP   = "localhost";
+        int    serverPort = 8080;
+
+        // Verbindungsdaten aus Argumenten oder interaktiv
+        if (args.length >= 2) {
+            serverIP   = args[0];
+            serverPort = parsePort(args[1]);
+        } else {
+            System.out.print("Server-IP   [localhost]: ");
+            String eingabeIP = scanner.nextLine().trim();
+            if (!eingabeIP.isEmpty()) serverIP = eingabeIP;
+
+            System.out.print("Server-Port [8080]:      ");
+            String eingabePort = scanner.nextLine().trim();
+            if (!eingabePort.isEmpty()) serverPort = parsePort(eingabePort);
+        }
+
+        // Client erstellen – Verbindung wird im Konstruktor aufgebaut
+        System.out.println("Verbinde mit " + serverIP + ":" + serverPort + " ...");
+        client = new ChatCatzClient(serverIP, serverPort);
+        if (!client.isConnected()) {
+            System.out.println("[FEHLER] Verbindung fehlgeschlagen. Programm wird beendet.");
+            return;
+        }
+        System.out.println("Verbunden!");
+
+        // Login
+        System.out.print("Benutzername: ");
+        String user = scanner.nextLine().trim();
+        System.out.print("Passwort:     ");
+        String pass = scanner.nextLine().trim();
+        client.sendeLogin(user, pass);
+
+        // Kurz warten, damit der Server antworten kann
+        sleep(500);
+
+        // Hauptschleife
+        mach();
+
+        // Aufräumen
+        client.sendeQuit();
+        sleep(200);
+        client.close();
+        System.out.println("Verbindung getrennt. Tschüss! 🐾");
+    }
+
+    // =========================================================
+    // mach() – Hauptschleife des Programms
+    // =========================================================
+
+    public static void mach() {
+        printHilfe();
+
+        boolean laeuft = true;
+
+        while (laeuft) {
+            System.out.print("\nChatCatz> ");
+            String eingabe = scanner.nextLine().trim();
+
+            if (eingabe.isEmpty()) continue;
+
+            // Befehl und optionale Argumente trennen
+            int    leerIdx  = eingabe.indexOf(' ');
+            String befehl   = (leerIdx == -1 ? eingabe : eingabe.substring(0, leerIdx)).toUpperCase();
+            String argument = (leerIdx == -1 ? ""      : eingabe.substring(leerIdx + 1).trim());
+
+            switch (befehl) {
+                // ---- Senden ----
+                case "MEOW":
+                    if (argument.isEmpty()) {
+                        System.out.println("[!] Verwendung: meow <text>");
+                    } else {
+                        client.sendeMeow(argument);
+                    }
+                    break;
+
+                case "PURR":
+                    if (argument.isEmpty()) {
+                        System.out.println("[!] Verwendung: purr <id>");
+                    } else {
+                        client.sendePurr(argument);
+                    }
+                    break;
+
+                case "PURRSOF":
+                    if (argument.isEmpty()) {
+                        System.out.println("[!] Verwendung: purrsof <id>");
+                    } else {
+                        client.sendePurrsof(argument);
+                        sleep(300);
+                        // Ergebnis zeigt bearbeitePURRS() direkt an
+                    }
+                    break;
+
+                case "ADDFRIEND":
+                    if (argument.isEmpty()) {
+                        System.out.println("[!] Verwendung: addfriend <user>");
+                    } else {
+                        client.sendeAddfriend(argument);
+                    }
+                    break;
+
+                case "USERS":
+                    client.sendeUsers();
+                    sleep(300);
+                    break;
+
+                // ---- Lokale Anzeige ----
+                case "LIST":
+                    zeigeTimeline();
+                    break;
+
+                case "USERLIST":
+                    zeigeNutzerliste();
+                    break;
+
+                // ---- Sonstiges ----
+                case "HILFE":
+                case "HELP":
+                case "?":
+                    printHilfe();
+                    break;
+
+                case "QUIT":
+                case "EXIT":
+                case "Q":
+                    laeuft = false;
+                    break;
+
+                default:
+                    System.out.println("[!] Unbekannter Befehl: " + befehl + "  (? für Hilfe)");
+            }
+        }
+    }
+
+    // =========================================================
+    // Hilfsfunktionen
+    // =========================================================
+
+    /** Zeigt alle empfangenen Meows an. */
+    private static void zeigeTimeline() {
+        var meows = client.meows;
+        if (meows.isEmpty()) {
+            System.out.println("[Timeline ist leer – noch keine Meows empfangen]");
+        } else {
+            System.out.println("--- Timeline ---");
+            for (var m : meows) {
+                System.out.println("  " + m);
+            }
+            System.out.println("----------------");
+        }
+    }
+
+    /** Zeigt die zuletzt abgerufene Nutzerliste an. */
+    private static void zeigeNutzerliste() {
+        var users = client.users;
+        if (users.isEmpty()) {
+            System.out.println("[Keine Nutzer bekannt – erst 'users' eingeben]");
+        } else {
+            System.out.println("--- Online-Nutzer ---");
+            for (var u : users) {
+                System.out.println("  • " + u);
+            }
+            System.out.println("---------------------");
+        }
+    }
+
+    /** Gibt die Hilfe-Übersicht aus. */
+    private static void printHilfe() {
+        System.out.println();
+        System.out.println("╔══════════════════════════════════════════╗");
+        System.out.println("║           ChatCatz – Befehle             ║");
+        System.out.println("╠══════════════════════════════════════════╣");
+        System.out.println("║  meow <text>       Nachricht senden      ║");
+        System.out.println("║  purr <id>         Nachricht liken       ║");
+        System.out.println("║  purrsof <id>      Likes einer Nachricht ║");
+        System.out.println("║  addfriend <user>  Freund hinzufügen     ║");
+        System.out.println("║  users             Nutzerliste abrufen   ║");
+        System.out.println("║  list              Timeline anzeigen     ║");
+        System.out.println("║  userlist          Nutzerliste anzeigen  ║");
+        System.out.println("║  ?  /  hilfe       Diese Hilfe           ║");
+        System.out.println("║  quit              Beenden               ║");
+        System.out.println("╚══════════════════════════════════════════╝");
+    }
+
+    /** Parst einen Port und gibt 8080 als Fallback zurück. */
+    private static int parsePort(String s) {
+        try {
+            return Integer.parseInt(s);
+        } catch (NumberFormatException e) {
+            System.out.println("[!] Ungültiger Port '" + s + "', verwende 8080.");
+            return 8080;
+        }
+    }
+
+    /** Kurze Pause für Server-Antworten. */
+    private static void sleep(long ms) {
+        try { Thread.sleep(ms); } catch (InterruptedException ignored) {}
+    }
+}

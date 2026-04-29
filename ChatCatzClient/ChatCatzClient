@@ -1,0 +1,179 @@
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+
+public class ChatCatzClient extends Client {
+
+    // === Innere Klassen für Datenmodelle ===
+
+    public static class Meow {
+        public final String id;
+        public final String user;
+        public final String text;
+
+        public Meow(Strring id, String user, String text) {
+            this.id   = id;
+            this.user = user;
+            this.text = text;
+        }
+
+        @Override
+        public String toString() {
+            return "[" + id + "] " + user + ": " + text;
+        }
+    }
+
+    public static class PurrInfo {
+        public final String meowId;
+        public final int    count;
+
+        public PurrInfo(String meowId, int count) {
+            this.meowId = meowId;
+            this.count  = count;
+        }
+
+        @Override
+        public String toString() {
+            return "Meow #" + meowId + " hat " + count + " Purr(s)";
+        }
+    }
+
+    // === Felder ===
+
+    public final List<Meow>     meows     = new ArrayList<>();
+    public final List<String>   users     = new ArrayList<>();
+    public final List<PurrInfo> purrInfos = new ArrayList<>();
+
+    private String lastStatus  = "";   // letztes +OK oder -ERR
+    private String lastMessage = "";   // vollständige letzte Statusnachricht
+
+    // === Konstruktor ===
+
+    public ChatCatzClient(String pServerIP, int pServerPort) {
+        super(pServerIP, pServerPort);
+    }
+
+    // =========================================================
+    // processMessage – Eingehende Nachrichten verarbeiten
+    // =========================================================
+
+    @Override
+    public void processMessage(String pMessage) {
+        if (pMessage == null || pMessage.isEmpty()) return;
+
+        String[] parts   = pMessage.split(" ");
+        String   command = parts[0];
+
+        switch (command) {
+            case "+OK":
+                bearbeiteOK(pMessage);
+                break;
+            case "-ERR":
+                bearbeiteERR(pMessage);
+                break;
+            case "MEOWING":
+                // Protokoll: MEOWING <id> <user> <text...>
+                if (parts.length >= 4) {
+                    String text = String.join(" ", Arrays.copyOfRange(parts, 3, parts.length));
+                    bearbeiteMEOWING(parts[1], parts[2], text);
+                }
+                break;
+            case "PURRS":
+                // Protokoll: PURRS <id> <count>
+                if (parts.length >= 3) {
+                    bearbeitePURRS(parts[1], parts[2]);
+                }
+                break;
+            case "USERLIST":
+                // Protokoll: USERLIST <user1> <user2> ...
+                bearbeiteUSERLIST(pMessage);
+                break;
+            default:
+                System.out.println("[UNBEKANNT] " + pMessage);
+        }
+    }
+
+    // =========================================================
+    // Sende-Methoden
+    // =========================================================
+
+    /** Anmelden: LOGIN <user>|<pass> */
+    public void sendeLogin(String pUser, String pPass) {
+        send("LOGIN " + pUser + "|" + pPass);
+    }
+
+    /** Freund hinzufügen: ADDFRIEND <user> */
+    public void sendeAddfriend(String pUser) {
+        send("ADDFRIEND " + pUser);
+    }
+
+    /** Nachricht senden: MEOW <text> */
+    public void sendeMeow(String pText) {
+        send("MEOW " + pText);
+    }
+
+    /** Purr (Like) vergeben: PURR <id> */
+    public void sendePurr(String pId) {
+        send("PURR " + pId);
+    }
+
+    /** Purrs einer Nachricht abfragen: PURRSOF <id> */
+    public void sendePurrsof(String pId) {
+        send("PURRSOF " + pId);
+    }
+
+    /** Alle Nutzer abfragen: USERS */
+    public void sendeUsers() {
+        send("USERS");
+    }
+
+    /** Verbindung trennen: QUIT */
+    public void sendeQuit() {
+        send("QUIT");
+    }
+
+    // =========================================================
+    // Bearbeitungs-Methoden (privat)
+    // =========================================================
+
+    private void bearbeiteOK(String pMessage) {
+        lastStatus  = "+OK";
+        lastMessage = pMessage;
+        System.out.println("[OK] " + pMessage);
+    }
+
+    private void bearbeiteERR(String pMessage) {
+        lastStatus  = "-ERR";
+        lastMessage = pMessage;
+        System.out.println("[FEHLER] " + pMessage);
+    }
+
+    private void bearbeiteMEOWING(String pId, String pUser, String pText) {
+        Meow m = new Meow(pId, pUser, pText);
+        meows.add(m);
+        System.out.println("[MEOWING] " + m);
+    }
+
+    private void bearbeitePURRS(String pId, String pCount) {
+        int count = 0;
+        try {
+            count = Integer.parseInt(pCount);
+        } catch (NumberFormatException e) {
+            System.out.println("[WARNUNG] Ungültige Purr-Anzahl: " + pCount);
+        }
+        PurrInfo pi = new PurrInfo(pId, count);
+        purrInfos.add(pi);
+        System.out.println("[PURRS] " + pi);
+    }
+
+    private void bearbeiteUSERLIST(String pMessage) {
+        users.clear();
+        // Format: USERLIST <user1> <user2> ...
+        String[] parts = pMessage.split(" ");
+        for (int i = 1; i < parts.length; i++) {
+            users.add(parts[i]);
+        }
+        System.out.println("[USERS] " + users);
+    }
+
+}
